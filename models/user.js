@@ -30,7 +30,7 @@ class User {
     const results = await client.query(`
       INSERT INTO users (username, password, first_name, last_name, phone, join_at) VALUES ($1,$2,$3,$4,$5,$6)
     `, [username, hashedPw, first_name, last_name, phone, joinAt])
-
+    await User.updateLoginTimestamp(username)
     return {username, password, first_name, last_name, phone}
     
   }
@@ -39,10 +39,13 @@ class User {
 
   static async authenticate(username, password) { 
 
-    const user = await User.get(username);
+    const user = await client.query(`
+      SELECT password FROM users WHERE username = $1
+    `, [username]);
+    console.log(user)
     if(!user) throw new ExpressError('username has not been registered yet')
 
-    const auth = await bcrypt.compare(password, user.password);
+    const auth = await bcrypt.compare(password, user.rows[0].password);
     return auth
 
   }
@@ -88,20 +91,10 @@ class User {
   static async get(username) { 
 
     const userInfo = await client.query(`
-      SELECT * FROM users WHERE username = $1;
+      SELECT username, first_name, last_name, phone, join_at, last_login_at FROM users WHERE username = $1;
     `, [username])
-   
-    const user = userInfo.rows.map(function(u){
-      return {
-        username: u.username, 
-        first_name: u.first_name, 
-        last_name: u.last_name, 
-        phone: u.phone, 
-        join_at: u.join_at, 
-        last_login_at: u.last_login_at
-        }
-    })
-   return user
+
+   return userInfo.rows[0]
   }
   /** Return messages from this user.
    *
@@ -114,14 +107,32 @@ class User {
   static async messagesFrom(username) { 
 
     const messages = await client.query(`
-      SELECT m.id, m.to_username, m.body, m.sent_at, m.read_at
+      SELECT m.id, m.to_username as to_user, m.body, m.sent_at, m.read_at
       FROM messages AS m
       JOIN users AS u
       ON u.username = m.from_username
       WHERE m.from_username = $1
     `, [username])
+    let fromMsgs = messages.rows
 
-    return messages.rows
+    async function getSpecificInfoNeededToPassTest(msg){
+        const result = await User.get(msg.to_user)
+        const user = result
+        return msg.to_user = {
+          username: user.username,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          phone: user.phone
+          }
+      }
+
+    
+    for(let msg of fromMsgs){
+      await getSpecificInfoNeededToPassTest(msg)
+    }
+    
+    return fromMsgs
+
    }
 
   /** Return messages to this user.
@@ -135,14 +146,30 @@ class User {
   static async messagesTo(username) { 
 
      const messages = await client.query(`
-      SELECT m.id, m.to_username, m.body, m.sent_at, m.read_at
+      SELECT m.id, m.from_username as from_user, m.body, m.sent_at, m.read_at
       FROM messages AS m
       JOIN users AS u
       ON u.username = m.to_username
       WHERE m.to_username = $1
     `, [username])
 
-    return messages.rows
+    let toMsgs = messages.rows
+    async function getSpecificInfoNeededToPassTest(msg){
+        const result = await User.get(msg.from_user)
+        const user = result
+        return msg.from_user = {
+          username: user.username,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          phone: user.phone
+          }
+      }
+
+    for(let msg of toMsgs){
+      await getSpecificInfoNeededToPassTest(msg)
+    }
+
+    return toMsgs
 
    }
 }

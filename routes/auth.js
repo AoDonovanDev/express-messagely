@@ -20,6 +20,10 @@ const ExpressError = require("../expressError");
 router.post("/login", async function(req, res, next) {
   try {
     const { username, password } = req.body;
+    const existingUser = await User.get(username)
+    if(!existingUser){
+      throw new ExpressError('he dont exist', 400)
+    }
     const isValid = await User.authenticate(username, password)
     if (isValid) {
       await User.updateLoginTimestamp(username)
@@ -44,7 +48,6 @@ router.post('/register', async function(req, res, next){
     if (!username || !password) {
       throw new ExpressError("Username and password required", 400);
     }
-    console.log(username, password)
     const newUser = await User.register({username, password, first_name, last_name, phone})
     let token = jwt.sign({ username }, SECRET_KEY);
     return res.json({ token });

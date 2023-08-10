@@ -61,11 +61,11 @@ router.get('/:id', ensureLoggedIn, ensureCorrectUser, async(req, res, next) => {
  *   {message: {id, from_username, to_username, body, sent_at}}
  *
  **/
-router.post("/", ensureLoggedIn, ensureCorrectUser, async function(req, res, next) {
+router.post("/", ensureLoggedIn, async function(req, res, next) {
   try {
     const from_username = req.user.username
     const { to_username, body } = req.body;
-    const newMessage = await Message.create(from_username, to_username, body)
+    const newMessage = await Message.create({from_username, to_username, body})
     return res.json({message: newMessage})
   } catch (err) {
     return next(err);
@@ -82,14 +82,14 @@ router.post("/", ensureLoggedIn, ensureCorrectUser, async function(req, res, nex
  *
  **/
 
-router.post('/:id/read', ensureLoggedIn, ensureCorrectUser, async(req, res, next) => {
+router.post('/:id/read', ensureLoggedIn, async(req, res, next) => {
   try{
     const username = req.user.username
     const msgid = req.params.id
     const msg = await Message.get(msgid)
     if(msg.to_user.username == username){
       const readMsg = await Message.markRead(msgid)
-      return res.json({ messages: messages})
+      return res.json({ messages: readMsg})
     }
     throw new ExpressError('who are ye', 401)
   }
@@ -97,3 +97,5 @@ router.post('/:id/read', ensureLoggedIn, ensureCorrectUser, async(req, res, next
     next(e)
   }
 })
+
+module.exports = router

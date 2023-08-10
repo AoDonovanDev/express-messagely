@@ -17,7 +17,7 @@ router.get('/', ensureLoggedIn,
   async (req, res, next) => {
     try {
       const allUsers = await User.all()
-      return allUsers
+      return res.json({users: allUsers})
 
     } catch (e) {
       return next(new ExpressError("Please login first!", 401))
@@ -70,3 +70,5 @@ router.get('/:username/to', ensureLoggedIn, ensureCorrectUser, async(req, res, n
   const messages = await User.messagesFrom(username)
   return res.json({ messages: messages})
 })
+
+module.exports = router

@@ -3,10 +3,11 @@
 // read .env files and make environmental variables
 
 require("dotenv").config();
+const secret = require('./secret')
 
 const DB_URI = (process.env.NODE_ENV === "test")
-  ? "postgresql:///messagely_test"
-  : "postgresql:///messagely";
+  ? `postgresql://postgres:${secret}@localhost/messagely_test`
+  : `postgresql://postgres:${secret}@localhost/messagely`;
 
 const SECRET_KEY = process.env.SECRET_KEY || "secret";
 

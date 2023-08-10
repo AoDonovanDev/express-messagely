@@ -26,11 +26,12 @@ class User {
     const user = await User.get(username)
     if(user) throw new ExpressError('taken', 401)
     const hashedPw = await bcrypt.hash(password, BCRYPT_WORK_FACTOR)
+    const joinAt = new Date()
     const results = await client.query(`
-      INSERT INTO users (username, password, first_name, last_name, phone) VALUES ($1,$2,$3,$4)
-    `, [username, hashedPw, first_name, last_name, phone])
+      INSERT INTO users (username, password, first_name, last_name, phone, join_at) VALUES ($1,$2,$3,$4,$5,$6)
+    `, [username, hashedPw, first_name, last_name, phone, joinAt])
 
-    return results.rows[0]
+    return {username, password, first_name, last_name, phone}
     
   }
 
@@ -52,7 +53,7 @@ class User {
 
     const now = new Date()
     const result = await client.query(`
-      UPDATE users SET last_log_in=$1 WHERE username=$2
+      UPDATE users SET last_login_at=$1 WHERE username=$2
     `, [now, username])
     return result.rows[0]
    }
@@ -61,11 +62,17 @@ class User {
    * [{username, first_name, last_name, phone}, ...] */
 
   static async all() { 
-
     const result = await client.query(`
       SELECT * FROM users
     `)
-    const allUsers = result.rows[0].map(u => {u.username, u.first_name, u.last_name, u.phone})
+    const allUsers = result.rows.map(function(u){
+      return {
+        username: u.username,
+        first_name: u.first_name,
+        last_name: u.last_name,
+        phone: u.phone
+      }
+    })
     return allUsers
   }
 
@@ -80,11 +87,22 @@ class User {
 
   static async get(username) { 
 
-    const user = await client.query(`
+    const userInfo = await client.query(`
       SELECT * FROM users WHERE username = $1;
     `, [username])
-    return user.rows[0]
-   }
+   
+    const user = userInfo.rows.map(function(u){
+      return {
+        username: u.username, 
+        first_name: u.first_name, 
+        last_name: u.last_name, 
+        phone: u.phone, 
+        join_at: u.join_at, 
+        last_login_at: u.last_login_at
+        }
+    })
+   return user
+  }
   /** Return messages from this user.
    *
    * [{id, to_user, body, sent_at, read_at}]

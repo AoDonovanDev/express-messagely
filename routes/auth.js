@@ -44,7 +44,8 @@ router.post('/register', async function(req, res, next){
     if (!username || !password) {
       throw new ExpressError("Username and password required", 400);
     }
-    const newUser = await User.register(username, password, first_name, last_name, phone)
+    console.log(username, password)
+    const newUser = await User.register({username, password, first_name, last_name, phone})
     let token = jwt.sign({ username }, SECRET_KEY);
     return res.json({ token });
   } catch (e) {
@@ -54,3 +55,5 @@ router.post('/register', async function(req, res, next){
     return next(e)
   }
 });
+
+module.exports = router
